@@ -5,4 +5,4 @@
 
 </p>
 
-## [คลิกที่นี่เพื่อดูคู่มือติดตั้ง CRM-AI (PDF) โดยตรง](AI%20Feedback%20Analysis-installation-manual.pdf)
+## [คลิกที่นี่เพื่อดูคู่มือติดตั้ง AI Feedback Analysis & Task Management System (PDF) โดยตรง](AI%20Feedback%20Analysis-installation-manual.pdf)
