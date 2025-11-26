@@ -1,0 +1,298 @@
+{
+  "name": "system02",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "1b1-YypVb794hIoBYHyuPKV_JBZfisn_7QH8ZbzS3poA",
+          "mode": "list",
+          "cachedResultName": "feedbackData",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1b1-YypVb794hIoBYHyuPKV_JBZfisn_7QH8ZbzS3poA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 383118766,
+          "mode": "list",
+          "cachedResultName": "Feedbacks",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1b1-YypVb794hIoBYHyuPKV_JBZfisn_7QH8ZbzS3poA/edit#gid=383118766"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        16
+      ],
+      "id": "ea69866d-da36-41a3-a247-0fc3791dffe3",
+      "name": "Google Sheets Trigger",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "XJ5S9Lskczd9bnlk",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-pro",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-pro"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json['โปรดระบุความคิดเห็น/ข้อเสนอแนะของท่าน (ไม่จำกัดจำนวน)'] }}"
+            }
+          ]
+        },
+        "options": {
+          "systemMessage": "คุณคือผู้เชี่ยวชาญด้านการวิเคราะห์ฟีดแบ็กของลูกค้า คุณจะต้องให้ผลลัพธ์ออกมาในรูปแบบ **JSON Object เท่านั้น** ห้ามมีข้อความอื่นใดนอกเหนือจาก JSON หรืออักขระพิเศษ (เช่น ``` หรือ \\n)  กฏการตอบกลับ: 1. Sentiment: วิเคราะห์อารมณ์รวมของรีวิว ต้องเป็น \"Positive\", \"Negative\", หรือ \"Neutral\" 2. Topic: จัดกลุ่มปัญหาหลักของรีวิว ต้องเลือกหัวข้อที่เกี่ยวข้องที่สุดจากตัวเลือกต่อไปนี้: \"Customer Service\", \"Product Quality\", \"Shipping/Delivery\", \"Pricing\", \"Other\" 3. Summary: สรุปประเด็นหลักของฟีดแบ็กให้อยู่ในประโยคเดียว (ไม่เกิน 50 คำ) 4. Severity: กำหนดระดับความรุนแรงของปัญหา (1=ต่ำ, 5=สูง)  ตัวอย่างโครงสร้าง JSON ที่ต้องการ: {\"Sentiment\": \"Negative\", \"Topic\": \"Shipping/Delivery\", \"Summary\": \"สินค้าจัดส่งล่าช้ากว่ากำหนด 3 วันและกล่องบรรจุภัณฑ์เสียหายเล็กน้อย\", \"Severity\": 4}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        16
+      ],
+      "id": "da1f53d3-5c8a-4df6-8dc7-ea22e2b2e8e4",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "RxgPIGHH8f5ipTxM",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1b1-YypVb794hIoBYHyuPKV_JBZfisn_7QH8ZbzS3poA",
+          "mode": "list",
+          "cachedResultName": "feedbackData",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1b1-YypVb794hIoBYHyuPKV_JBZfisn_7QH8ZbzS3poA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 383118766,
+          "mode": "list",
+          "cachedResultName": "Feedbacks",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1b1-YypVb794hIoBYHyuPKV_JBZfisn_7QH8ZbzS3poA/edit#gid=383118766"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Topic": "={{ $json.Topic }}",
+            "Sentiment": "={{ $json.Sentiment }}",
+            "Summary": "={{ $json.Summary }}",
+            "FeedbackID": "={{ $('Google Sheets Trigger').item.json.FeedbackID }}",
+            "Task?": "FALSE"
+          },
+          "matchingColumns": [
+            "FeedbackID"
+          ],
+          "schema": [
+            {
+              "id": "ประทับเวลา",
+              "displayName": "ประทับเวลา",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ท่านให้คะแนนความพึงพอใจโดยรวมเท่าไร?",
+              "displayName": "ท่านให้คะแนนความพึงพอใจโดยรวมเท่าไร?",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "โปรดระบุความคิดเห็น/ข้อเสนอแนะของท่าน (ไม่จำกัดจำนวน)",
+              "displayName": "โปรดระบุความคิดเห็น/ข้อเสนอแนะของท่าน (ไม่จำกัดจำนวน)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ท่านได้รับบริการ/สินค้าจากสาขา/ทีมงานใด?",
+              "displayName": "ท่านได้รับบริการ/สินค้าจากสาขา/ทีมงานใด?",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ช่องทางติดต่อกลับ (ถ้าต้องการให้เราติดต่อเพื่อสอบถามรายละเอียดเพิ่มเติม)",
+              "displayName": "ช่องทางติดต่อกลับ (ถ้าต้องการให้เราติดต่อเพื่อสอบถามรายละเอียดเพิ่มเติม)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "FeedbackID",
+              "displayName": "FeedbackID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Sentiment",
+              "displayName": "Sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Topic",
+              "displayName": "Topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Task?",
+              "displayName": "Task?",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        320,
+        16
+      ],
+      "id": "d2fa03a9-43c9-4447-a3c1-e9fef12f9891",
+      "name": "GGS:UpdateRow",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QWaAb0aq2VIWfoNV",
+          "name": "Google:system02"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. ดึงค่า JSON String จากผลลัพธ์ของ Node \"Message a model\"\nconst jsonString = $json.content.parts[0].text;\n\n// 2. ทำความสะอาด JSON String: (ใช้โค้ดที่สมบูรณ์จากคำตอบก่อนหน้า)\nlet cleanedString = jsonString\n    .trim()\n    .replace(/\\\\\"/g, '\"')\n    .replace(/\\n/g, '');\n\n// 3. ตรวจสอบและ Parse JSON:\ntry {\n    const startIndex = cleanedString.indexOf('{');\n    const endIndex = cleanedString.lastIndexOf('}');\n    \n    if (startIndex !== -1 && endIndex !== -1) {\n        const jsonObjectString = cleanedString.substring(startIndex, endIndex + 1);\n        \n        // คืนค่าเป็น JavaScript Object (ไม่ใช่ String)\n        return JSON.parse(jsonObjectString);\n    } else {\n        console.error(\"Error: Could not find valid JSON object start/end markers.\");\n        return { error: \"JSON object not found in AI response\" };\n    }\n} catch (e) {\n    console.error(\"Error parsing JSON:\", e);\n    return { error: \"Failed to parse JSON\", originalText: jsonString };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        16
+      ],
+      "id": "857af4a9-d23f-4858-b626-6263d5b5138b",
+      "name": "Code:Extract"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code:Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code:Extract": {
+      "main": [
+        [
+          {
+            "node": "GGS:UpdateRow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3cc197b2-2a6a-4d2b-9a06-0d729e5df65b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "476f031097a062e32e83b051d1e4f5ed8266a05c11eea42621b6eb2e390c333c"
+  },
+  "id": "3ERVAcwS6UMKhFwC",
+  "tags": []
+}
