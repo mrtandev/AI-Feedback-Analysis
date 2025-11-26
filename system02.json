@@ -53,12 +53,12 @@
         "messages": {
           "values": [
             {
-              "content": "={{ $json['โปรดระบุความคิดเห็น/ข้อเสนอแนะของท่าน (ไม่จำกัดจำนวน)'] }}"
+              "content": "=**FeedbackID ที่ใช้ในการอ้างอิง:** \n{{ $json.FeedbackID }} \n**ข้อความ Feedback:** \n{{ $json[\"โปรดระบุความคิดเห็น/ข้อเสนอแนะของท่าน (ไม่จำกัดจำนวน)\"] }}"
             }
           ]
         },
         "options": {
-          "systemMessage": "คุณคือผู้เชี่ยวชาญด้านการวิเคราะห์ฟีดแบ็กของลูกค้า คุณจะต้องให้ผลลัพธ์ออกมาในรูปแบบ **JSON Object เท่านั้น** ห้ามมีข้อความอื่นใดนอกเหนือจาก JSON หรืออักขระพิเศษ (เช่น ``` หรือ \\n)  กฏการตอบกลับ: 1. Sentiment: วิเคราะห์อารมณ์รวมของรีวิว ต้องเป็น \"Positive\", \"Negative\", หรือ \"Neutral\" 2. Topic: จัดกลุ่มปัญหาหลักของรีวิว ต้องเลือกหัวข้อที่เกี่ยวข้องที่สุดจากตัวเลือกต่อไปนี้: \"Customer Service\", \"Product Quality\", \"Shipping/Delivery\", \"Pricing\", \"Other\" 3. Summary: สรุปประเด็นหลักของฟีดแบ็กให้อยู่ในประโยคเดียว (ไม่เกิน 50 คำ) 4. Severity: กำหนดระดับความรุนแรงของปัญหา (1=ต่ำ, 5=สูง)  ตัวอย่างโครงสร้าง JSON ที่ต้องการ: {\"Sentiment\": \"Negative\", \"Topic\": \"Shipping/Delivery\", \"Summary\": \"สินค้าจัดส่งล่าช้ากว่ากำหนด 3 วันและกล่องบรรจุภัณฑ์เสียหายเล็กน้อย\", \"Severity\": 4}"
+          "systemMessage": "คุณคือผู้เชี่ยวชาญด้านการวิเคราะห์ฟีดแบ็กของลูกค้า **คุณจะต้องให้ผลลัพธ์ออกมาในรูปแบบ JSON Object เท่านั้น** ห้ามมีข้อความอื่นใดนอกเหนือจาก JSON หรืออักขระพิเศษใดๆ (เช่น ``` หรือ \\n)  **ข้อมูลที่ให้: คุณจะได้รับ FeedbackID และข้อความ Feedback** คุณต้องนำ FeedbackID ที่ได้รับมาใส่ในผลลัพธ์ JSON ด้วย  **กฎการตอบกลับ (ต้องครบ 6 ข้อ):** 1. **Sentiment**: วิเคราะห์อารมณ์รวมของรีวิว ต้องเป็น \"Positive\", \"Negative\", หรือ \"Neutral\" 2. **Topic**: จัดกลุ่มปัญหาหลักของรีวิว ต้องเลือกหัวข้อที่เกี่ยวข้องที่สุดจากตัวเลือกต่อไปนี้: \"Customer Service\", \"Product Quality\", \"Shipping/Delivery\", \"Pricing\", \"Other\" 3. **Summary**: สรุปประเด็นหลักของฟีดแบ็กให้อยู่ในประโยคเดียว (ไม่เกิน 50 คำ) 4. **Severity**: กำหนดระดับความรุนแรงของปัญหา (1=ต่ำ, 5=สูง) 5. **Task?**: กำหนดเป็นค่า **Boolean** (`true` หรือ `false`) **เท่านั้น** โดยให้เป็น `true` หากฟีดแบ็กนี้จำเป็นต้องมีการดำเนินการติดตามผลทันที มิฉะนั้นให้เป็น `false` 6. **FeedbackID**: ดึง **FeedbackID** ที่คุณได้รับจาก Input มาใส่ใน Property นี้  **ตัวอย่างโครงสร้าง JSON ที่ต้องการ:** {\"Sentiment\": \"Negative\", \"Topic\": \"Shipping/Delivery\", \"Summary\": \"สินค้าจัดส่งล่าช้ากว่ากำหนด 3 วันและกล่องบรรจุภัณฑ์เสียหายเล็กน้อย\", \"Severity\": 4, \"Task?\": true, \"FeedbackID\": 1234}"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
@@ -73,6 +73,178 @@
         "googlePalmApi": {
           "id": "RxgPIGHH8f5ipTxM",
           "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ดึงค่าข้อความที่บรรจุ JSON String จาก Output ของ Node \"Message a model\"\nconst jsonString = $json.content.parts[0].text;\n\n// ทำความสะอาด JSON String: ลบ \"json\\n(\", \"\\n\", \")\\n\" และ backslash escape\nlet cleanedString = jsonString\n    .trim()\n    .replace(/^json\\s*\\n*\\s*\\(/i, '') // ลบ 'json(' ที่อาจอยู่ต้นข้อความ\n    .replace(/\\s*\\n*\\s*\\)\\s*\\n*$/i, '') // ลบ ')\\n' ที่อาจอยู่ท้ายข้อความ\n    .replace(/\\\\\"/g, '\"') // เปลี่ยน \\\" เป็น \"\n    .replace(/\\n/g, ''); // ลบ \\n\n\n// แปลง JSON String เป็น JavaScript Object\ntry {\n    const parsedJson = JSON.parse(cleanedString);\n    return parsedJson;\n} catch (e) {\n    // หาก Parse ล้มเหลว ให้ใช้ Fallback Logic ค้นหา { }\n    try {\n        const startIndex = cleanedString.indexOf('{');\n        const endIndex = cleanedString.lastIndexOf('}');\n        \n        if (startIndex !== -1 && endIndex !== -1) {\n            const jsonObjectString = cleanedString.substring(startIndex, endIndex + 1);\n            return JSON.parse(jsonObjectString);\n        }\n    } catch (e2) {\n        console.error(\"Error parsing JSON with fallback:\", e2);\n    }\n    \n    // หากยังล้มเหลว คืนค่า Error\n    console.error(\"Error parsing JSON:\", e);\n    // สำคัญ: ต้องแน่ใจว่าได้ส่งค่าที่ต้องการ (เช่น FeedbackID) ออกมาในกรณีฉุกเฉิน\n    return { error: \"Failed to parse JSON\", originalText: jsonString };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        16
+      ],
+      "id": "857af4a9-d23f-4858-b626-6263d5b5138b",
+      "name": "Code:Extract"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f7cc9417-7bfd-429c-a2a5-82f494fbd89b",
+              "leftValue": "={{ $json['Task?'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        -112
+      ],
+      "id": "209eef80-ca3c-43cf-8646-3cec83cef6bf",
+      "name": "If:Task?"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1b1-YypVb794hIoBYHyuPKV_JBZfisn_7QH8ZbzS3poA",
+          "mode": "list",
+          "cachedResultName": "feedbackData",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1b1-YypVb794hIoBYHyuPKV_JBZfisn_7QH8ZbzS3poA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 728083904,
+          "mode": "list",
+          "cachedResultName": "TaskLists",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1b1-YypVb794hIoBYHyuPKV_JBZfisn_7QH8ZbzS3poA/edit#gid=728083904"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Summary": "={{ $('Code:Extract').item.json.Summary }}",
+            "FeedbackID": "={{ $json.FeedbackID }}",
+            "Priority": "={{ $('Code:Extract').item.json.Severity }}",
+            "Topic": "={{ $('Code:Extract').item.json.Topic }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "TaskID",
+              "displayName": "TaskID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Topic",
+              "displayName": "Topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "FeedbackID",
+              "displayName": "FeedbackID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AssignedTo",
+              "displayName": "AssignedTo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "DateSolved",
+              "displayName": "DateSolved",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        640,
+        -240
+      ],
+      "id": "3550562a-dc9f-468c-9af8-da708227a8f4",
+      "name": "GGS:TaskLists",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QWaAb0aq2VIWfoNV",
+          "name": "Google:system02"
         }
       }
     },
@@ -99,8 +271,8 @@
             "Topic": "={{ $json.Topic }}",
             "Sentiment": "={{ $json.Sentiment }}",
             "Summary": "={{ $json.Summary }}",
-            "FeedbackID": "={{ $('Google Sheets Trigger').item.json.FeedbackID }}",
-            "Task?": "FALSE"
+            "FeedbackID": "={{ $json.FeedbackID }}",
+            "Task?": "={{ $json['Task?'] }}"
           },
           "matchingColumns": [
             "FeedbackID"
@@ -222,11 +394,11 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        320,
-        16
+        240,
+        -64
       ],
       "id": "d2fa03a9-43c9-4447-a3c1-e9fef12f9891",
-      "name": "GGS:UpdateRow",
+      "name": "GGS:UpdFeedback",
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "QWaAb0aq2VIWfoNV",
@@ -236,16 +408,125 @@
     },
     {
       "parameters": {
-        "jsCode": "// 1. ดึงค่า JSON String จากผลลัพธ์ของ Node \"Message a model\"\nconst jsonString = $json.content.parts[0].text;\n\n// 2. ทำความสะอาด JSON String: (ใช้โค้ดที่สมบูรณ์จากคำตอบก่อนหน้า)\nlet cleanedString = jsonString\n    .trim()\n    .replace(/\\\\\"/g, '\"')\n    .replace(/\\n/g, '');\n\n// 3. ตรวจสอบและ Parse JSON:\ntry {\n    const startIndex = cleanedString.indexOf('{');\n    const endIndex = cleanedString.lastIndexOf('}');\n    \n    if (startIndex !== -1 && endIndex !== -1) {\n        const jsonObjectString = cleanedString.substring(startIndex, endIndex + 1);\n        \n        // คืนค่าเป็น JavaScript Object (ไม่ใช่ String)\n        return JSON.parse(jsonObjectString);\n    } else {\n        console.error(\"Error: Could not find valid JSON object start/end markers.\");\n        return { error: \"JSON object not found in AI response\" };\n    }\n} catch (e) {\n    console.error(\"Error parsing JSON:\", e);\n    return { error: \"Failed to parse JSON\", originalText: jsonString };\n}"
+        "operation": "send",
+        "to": "U53f877618460b12c0df330a3ea233fe6",
+        "messages": {
+          "values": [
+            {
+              "altText": "ข้อความจากลูกค้า",
+              "flexJson": "={{ JSON.stringify($json.message.contents) }}",
+              "type": "flex"
+            }
+          ]
+        }
+      },
+      "type": "@aotoki/n8n-nodes-line-messaging.lineMessaging",
+      "typeVersion": 1,
+      "position": [
+        1312,
+        176
+      ],
+      "id": "146a16f1-9eba-4e5e-a7fc-0cad77e2d539",
+      "name": "Line Messaging",
+      "credentials": {
+        "lineMessagingApi": {
+          "id": "jdhBLJPXvIOX9rT5",
+          "name": "IDEA:Message"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "advanced": true,
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "FeedbackID",
+              "field2": "FeedbackID"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1008,
+        -128
+      ],
+      "id": "5f83af34-1da7-43be-a450-1e74e54be202",
+      "name": "Merge",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1b1-YypVb794hIoBYHyuPKV_JBZfisn_7QH8ZbzS3poA",
+          "mode": "list",
+          "cachedResultName": "feedbackData",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1b1-YypVb794hIoBYHyuPKV_JBZfisn_7QH8ZbzS3poA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 728083904,
+          "mode": "list",
+          "cachedResultName": "TaskLists",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1b1-YypVb794hIoBYHyuPKV_JBZfisn_7QH8ZbzS3poA/edit#gid=728083904"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "FeedbackID",
+              "lookupValue": "={{ $json.FeedbackID }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        848,
+        -272
+      ],
+      "id": "806c1b94-a168-48d7-ac15-55f1a3103116",
+      "name": "GGS:GetTasks",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "QWaAb0aq2VIWfoNV",
+          "name": "Google:system02"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ดึงข้อมูลอินพุตทั้งหมด\nconst allInputItems = $input.all();\n\n// 1. ดึงข้อมูล Feedback ต้นฉบับ (ซึ่งคือ Item แรกสุดที่ไม่มี TaskID หรือ TaskID เป็น null/undefined)\n// เราจะถือว่า Item ที่ 0 เป็นข้อมูลหลัก (Feedback Data)\nconst originalData = allInputItems[0].json;\n\n// 2. กรองและเก็บข้อมูล Task ที่รวมจากทุก Item\n// โดยกรองเอาเฉพาะ Item ที่มี TaskID ที่ถูกต้องเท่านั้น (เพื่อตัด Item Feedback หลักออก)\nconst taskList = allInputItems\n    .filter(item => item.json.TaskID) // กรองเฉพาะ Item ที่มี TaskID (Tasks)\n    .map(item => ({\n        TaskID: item.json.TaskID,\n        Summary: item.json.Summary,\n        Priority: item.json.Priority,\n        Status: item.json.Status\n    }));\n\n// 3. คืนค่าเป็น Item เดียวที่มีข้อมูล Feedback ต้นฉบับ + Array ของ Tasks\nreturn [\n    {\n        json: {\n            ...originalData, // รวมข้อมูลหลัก เช่น Sentiment, Topic, FeedbackID\n            tasks: taskList // Array ของ Task ที่ถูกกรองแล้ว\n        }\n    }\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        96,
-        16
+        1232,
+        -176
       ],
-      "id": "857af4a9-d23f-4858-b626-6263d5b5138b",
-      "name": "Code:Extract"
+      "id": "0ff6c8c5-dc4d-4174-a277-f5ee1e37f083",
+      "name": "Code:Array"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ดึง Input Data ทั้งหมดออกมาเป็น Array\nconst allInputItems = $input.all();\n// เลือก Item แรกจาก Array นั้น (ซึ่งเป็น Item ที่มี Feedback Data และ Array tasks)\nconst data = allInputItems[0].json; \n\n// 1. สร้าง Component สำหรับรายการย่อย (Tasks List)\nlet taskListComponents = data.tasks.map(task => {\n  // กำหนดสีตามสถานะ (Status)\n  let statusColor;\n  if (task.Status === 'Solved') {\n    statusColor = '#4CAF50'; // Green\n  } else if (task.Status === 'Pending') {\n    statusColor = '#FFC107'; // Yellow/Amber\n  } else {\n    statusColor = '#F44336'; // Red\n  }\n  \n  // สร้าง Horizontal Box สำหรับ Task แต่ละรายการ พร้อมจัดการค่าว่าง\n  return {\n    \"type\": \"box\",\n    \"layout\": \"horizontal\",\n    \"spacing\": \"xs\",\n    \"contents\": [\n      {\n        \"type\": \"text\",\n        // ใช้ || 'N/A' เพื่อป้องกันค่าว่าง\n        \"text\": `ID:${task.TaskID || 'N/A'} (${task.Priority || 'N/A'})`, \n        \"size\": \"sm\",\n        \"flex\": 2,\n        \"weight\": \"bold\",\n        \"color\": \"#333333\"\n      },\n      {\n        \"type\": \"text\",\n        // ใช้ || 'No Summary' เพื่อป้องกันค่าว่าง\n        \"text\": `${task.Summary || 'No Summary'}`, \n        \"size\": \"sm\",\n        \"flex\": 4,\n        \"wrap\": true,\n        \"color\": \"#666666\"\n      },\n      {\n        \"type\": \"text\",\n        // ใช้ || 'Unknown' เพื่อป้องกันค่าว่าง\n        \"text\": `${task.Status || 'Unknown'}`, \n        \"size\": \"sm\",\n        \"flex\": 2,\n        \"align\": \"end\",\n        \"weight\": \"bold\",\n        \"color\": statusColor\n      }\n    ]\n  };\n});\n\n// 2. JSON Template Flex Message \nconst flexMessage = {\n  \"type\": \"flex\",\n  \"altText\": `Feedback ID ${data.FeedbackID || 'N/A'} - ${data.Sentiment || 'N/A'}`,\n  \"contents\": {\n    \"type\": \"bubble\",\n    \"styles\": {\n      \"header\": {\n        \"backgroundColor\": data.Sentiment === 'Positive' ? '#4CAF50' : data.Sentiment === 'Negative' ? '#F44336' : '#FFC107'\n      }\n    },\n    \"header\": {\n      \"type\": \"box\",\n      \"layout\": \"vertical\",\n      \"contents\": [\n        {\n          \"type\": \"text\",\n          \"text\": \"📊 ผลการวิเคราะห์ Feedback ใหม่\",\n          \"weight\": \"bold\",\n          \"color\": \"#FFFFFF\",\n          \"size\": \"md\"\n        },\n        {\n          \"type\": \"text\",\n          \"text\": `Sentiment: ${data.Sentiment || 'Unknown'}`,\n          \"weight\": \"bold\",\n          \"color\": \"#FFFFFF\",\n          \"size\": \"xl\",\n          \"margin\": \"sm\"\n        }\n      ]\n    },\n    \"body\": {\n      \"type\": \"box\",\n      \"layout\": \"vertical\",\n      \"spacing\": \"md\",\n      \"contents\": [\n        {\n          \"type\": \"text\",\n          \"text\": `Topic: ${data.Topic || 'N/A'}`,\n          \"size\": \"md\",\n          \"color\": \"#000000\"\n        },\n        { \"type\": \"separator\" },\n        {\n          \"type\": \"box\",\n          \"layout\": \"vertical\",\n          \"spacing\": \"sm\",\n          \"contents\": [\n            {\n              \"type\": \"text\",\n              \"text\": `Severity (1-5): ${data.Severity || 'N/A'}`,\n              \"color\": data.Severity >= 4 ? '#F44336' : '#FF9800', \n              \"weight\": \"bold\"\n            },\n            {\n              \"type\": \"text\",\n              \"text\": `Ref ID (Feedback): ${data.FeedbackID || 'N/A'}`,\n              \"color\": \"#AAAAAA\",\n              \"size\": \"sm\"\n            }\n          ]\n        },\n        { \"type\": \"separator\" },\n        {\n          \"type\": \"box\",\n          \"layout\": \"vertical\",\n          \"contents\": [\n            {\n              \"type\": \"text\",\n              \"text\": `✅ Task ที่ต้องติดตาม (${data.tasks ? data.tasks.length : 0} รายการ):`,\n              \"weight\": \"bold\",\n              \"size\": \"sm\",\n              \"margin\": \"none\"\n            },\n            // แทรกรายการย่อย\n            ...(data.tasks && data.tasks.length > 0 ? taskListComponents : [{\n                \"type\": \"text\",\n                \"text\": \"❌ ไม่มี Task ที่ต้องติดตามเพิ่มเติม\",\n                \"color\": \"#AAAAAA\",\n                \"size\": \"sm\",\n                \"margin\": \"sm\"\n            }]),\n          ]\n        }\n      ]\n    },\n    \"footer\": {\n      \"type\": \"box\",\n      \"layout\": \"vertical\",\n      \"contents\": [\n        {\n          \"type\": \"text\",\n          \"text\": `Summary: ${data.Summary || 'No summary provided.'}`,\n          \"wrap\": true,\n          \"size\": \"sm\"\n        }\n      ]\n    }\n  }\n};\n\n// คืนค่าเป็น Item ที่มี Flex Message JSON \nreturn [{ json: { message: flexMessage } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        -160
+      ],
+      "id": "623b5e15-cfb4-49b3-8097-5d7bf20fd0e5",
+      "name": "Code:Flex",
+      "alwaysOutputData": true
     }
   ],
   "pinData": {},
@@ -276,7 +557,96 @@
       "main": [
         [
           {
-            "node": "GGS:UpdateRow",
+            "node": "GGS:UpdFeedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If:Task?": {
+      "main": [
+        [
+          {
+            "node": "GGS:TaskLists",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Line Messaging",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GGS:UpdFeedback": {
+      "main": [
+        [
+          {
+            "node": "If:Task?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GGS:TaskLists": {
+      "main": [
+        [
+          {
+            "node": "GGS:GetTasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code:Array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GGS:GetTasks": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code:Array": {
+      "main": [
+        [
+          {
+            "node": "Code:Flex",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code:Flex": {
+      "main": [
+        [
+          {
+            "node": "Line Messaging",
             "type": "main",
             "index": 0
           }
@@ -284,11 +654,13 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": -1
   },
-  "versionId": "3cc197b2-2a6a-4d2b-9a06-0d729e5df65b",
+  "versionId": "0fbcad35-e7c3-4d2b-b692-62453ba7cfb9",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "476f031097a062e32e83b051d1e4f5ed8266a05c11eea42621b6eb2e390c333c"
